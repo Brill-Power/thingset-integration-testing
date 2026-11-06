@@ -1,31 +1,69 @@
 name: Test
 
-on: [push]
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    # Nightly, so upstream changes on main show up without anyone pushing here.
+    - cron: '17 3 * * *'
 
 jobs:
-  build:
+  integration:
+    name: integration (${{ matrix.variant }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # pinned: the versions recorded in this repo; must stay green.
+        # latest: thingset++ main, ThingSet.Net latest NuGet and main, python-thingset latest.
+        #         Only on the nightly schedule or a manual run; failures here are early warnings.
+        variant: ${{ fromJSON(contains(fromJSON('["schedule","workflow_dispatch"]'), github.event_name) && '["pinned","latest"]' || '["pinned"]') }}
+    env:
+      THINGSET_FIXTURE_SERVER: ${{ github.workspace }}/build/cpp-server/thingset-fixture-server
+
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
-      with:
-        submodules: 'recursive'
+      uses: actions/checkout@v4
 
     - name: Setup .NET
-      uses: actions/setup-dotnet@v3
+      uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: '8.x'
+        # thingset.net multi-targets net8.0 and net10.0, so building it from source needs the 10 SDK.
+        dotnet-version: |
+          8.x
+          10.x
 
-    - name: Setup C Compiler
-      run: |
-        sudo apt-get update && sudo apt-get install -y cmake
+    - name: Setup uv
+      uses: astral-sh/setup-uv@v6
 
-    - name: Build Server
-      working-directory: thingsetplusplus/examples/asioserver
+    - name: Build C++ fixture server
+      id: server
       run: |
-        cmake -S . -B build && cd build && make
+        if [ "${{ matrix.variant }}" = latest ]; then EXTRA=-DTHINGSETPLUSPLUS_GIT_TAG=main; fi
+        cmake -S fixtures/cpp-server -B build/cpp-server -DCMAKE_BUILD_TYPE=Release $EXTRA
+        cmake --build build/cpp-server -j
 
-    - name: Run Integration Tests
-      working-directory: tests/ThingSet.Test.Integration
+    - name: .NET client (NuGet)
+      if: ${{ !cancelled() && steps.server.outcome == 'success' }}
+      working-directory: tests/dotnet/ThingSet.Test.Integration
       run: |
-        dotnet test
+        if [ "${{ matrix.variant }}" = latest ]; then EXTRA='-p:ThingSetNetVersion=*'; fi
+        dotnet test $EXTRA
+
+    - name: .NET client (thingset.net main)
+      if: ${{ !cancelled() && steps.server.outcome == 'success' && matrix.variant == 'latest' }}
+      working-directory: tests/dotnet/ThingSet.Test.Integration
+      run: |
+        git clone --depth 1 https://github.com/Brill-Power/thingset.net.git "$RUNNER_TEMP/thingset.net"
+        dotnet test -p:ThingSetNetSource="$RUNNER_TEMP/thingset.net"
+
+    - name: Python client
+      if: ${{ !cancelled() && steps.server.outcome == 'success' }}
+      working-directory: tests/python
+      run: |
+        if [ "${{ matrix.variant }}" = latest ]; then
+          uv run --upgrade-package python-thingset pytest
+        else
+          uv run --locked pytest
+        fi

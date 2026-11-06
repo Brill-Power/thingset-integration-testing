@@ -1,0 +1,40 @@
+{
+  "$comment": "Language-neutral description of the object tree exposed by the fixture servers (fixtures/cpp-server). Every client test suite reads this file, so the C#, Python and C++ sides can't drift apart. If you change the server, change this file too; the schema tests will tell you if you forget.",
+  "tcpPort": 9001,
+  "udpPort": 9002,
+  "groups": [
+    { "id": 512, "parent": 0, "name": "Measurements" },
+    { "id": 768, "parent": 0, "name": "Config" }
+  ],
+  "properties": [
+    { "id": 513, "parent": 512, "path": "Measurements/voltage",     "type": "f32",    "writable": true,  "initial": 24.0,       "update": 25.5 },
+    { "id": 514, "parent": 512, "path": "Measurements/current",     "type": "f32",    "writable": true,  "initial": -1.5,       "update": 3.25 },
+    { "id": 515, "parent": 512, "path": "Measurements/temperature", "type": "i32",    "writable": true,  "initial": -20,        "update": 42 },
+    { "id": 516, "parent": 512, "path": "Measurements/uptime",      "type": "u32",    "writable": false, "initial": 12345 },
+    { "id": 517, "parent": 512, "path": "Measurements/errorFlags",  "type": "u64",    "writable": true,  "initial": 0,          "update": 4294967296 },
+    { "id": 769, "parent": 768, "path": "Config/name",              "type": "string", "writable": false, "initial": "fixture" },
+    { "id": 770, "parent": 768, "path": "Config/enabled",           "type": "bool",   "writable": true,  "initial": true,       "update": false },
+    { "id": 771, "parent": 768, "path": "Config/cellVoltages",      "type": "f32[]",  "writable": true,  "initial": [3.25, 3.125, 3.5, 3.0], "update": [3.0, 3.0, 3.0, 3.0] }
+  ],
+  "functions": [
+    {
+      "id": 4096, "parent": 0, "path": "xAdd", "type": "(i32,i32)->(i32)",
+      "cases": [ { "args": [2, 3], "result": 5 }, { "args": [-7, 4], "result": -3 } ]
+    },
+    {
+      "id": 4112, "parent": 0, "path": "xMultiply", "type": "(f32,f32)->(f32)",
+      "cases": [ { "args": [1.5, 4.0], "result": 6.0 } ]
+    },
+    {
+      "id": 4128, "parent": 0, "path": "xReset", "type": "()->()",
+      "$comment": "Restores every property to its initial value. Tests call this first so they don't depend on each other.",
+      "cases": [ { "args": [], "result": null } ]
+    }
+  ],
+  "unknownId": 3999,
+  "reports": {
+    "$comment": "Every intervalMs the server publishes these properties (by id) as a UDP report.",
+    "intervalMs": 250,
+    "ids": [513, 514]
+  }
+}

@@ -1,0 +1,45 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <!-- Run on whatever newer runtime is installed if .NET 8 isn't. -->
+    <RollForward>Major</RollForward>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <!--
+    Which ThingSet.Net to test:
+      default                                  pinned NuGet version below
+      -p:ThingSetNetVersion=*                  latest NuGet release
+      -p:ThingSetNetSource=/path/to/thingset.net   build from a source checkout
+  -->
+  <PropertyGroup>
+    <ThingSetNetVersion Condition="'$(ThingSetNetVersion)' == ''">0.1.12</ThingSetNetVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.2" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageReference Include="NUnit" Version="4.2.2" />
+    <PackageReference Include="NUnit.Analyzers" Version="4.4.0" />
+    <PackageReference Include="NUnit3TestAdapter" Version="4.6.0" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(ThingSetNetSource)' == ''">
+    <PackageReference Include="ThingSet.Client" Version="$(ThingSetNetVersion)" />
+    <PackageReference Include="ThingSet.Common.Transports.Ip" Version="$(ThingSetNetVersion)" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(ThingSetNetSource)' != ''">
+    <ProjectReference Include="$(ThingSetNetSource)/src/ThingSet.Client/ThingSet.Client.csproj" />
+    <ProjectReference Include="$(ThingSetNetSource)/src/ThingSet.Common.Transports.Ip/ThingSet.Common.Transports.Ip.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="NUnit.Framework" />
+  </ItemGroup>
+
+</Project>
